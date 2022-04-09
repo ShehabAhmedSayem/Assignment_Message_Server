@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  web:
+    build: ./
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./:/usr/src/app/
+    depends_on:
+      - rabbitmq
+      - redis
+      - celery
+    networks:
+      message-service:
+        ipv4_address: 171.22.0.5
+      backend-service:
+
+  redis:
+    image: redis:alpine
+    ports:
+      - 6379:6379
+    networks:
+      - backend-service
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - backend-service
+
+  celery:
+    build: ./
+    command: celery -A message_server worker -l info
+    volumes:
+      - ./:/usr/src/app/
+    depends_on:
+      - rabbitmq
+    networks:
+      - message-service
+      - backend-service
+      
+networks:
+  message-service:
+    attachable: true
+    ipam:
+      config:
+        - subnet: 171.22.0.0/16
+          gateway: 171.22.0.1
+  backend-service:
