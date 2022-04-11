@@ -25,6 +25,9 @@ class RedisClient():
             client_list.append(client)
         return client_list
 
+    def pop_client(self, client):
+        self.redis_instance.lrem('client_list', 1, client)
+
     def append_client(self, client):
         self.redis_instance.rpush('client_list', client)
     
@@ -32,8 +35,11 @@ class RedisClient():
         client_list = self.get_client_list()
         if client not in client_list:
             self.append_client(client)
+            client_list.append(client)
         return client_list
 
     def remove_client(self, client):
-        self.redis_instance.lrem('client_list', 1, client)
+        from message.helpers import ping
+        if not ping(client):
+            self.redis_instance.lrem('client_list', 1, client)
     

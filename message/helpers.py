@@ -23,44 +23,45 @@ def send_request_to_chat_server(url, data=None, timeout=5):
 
 
 def send_new_message_to_client_address(
-    to_client_address, 
-    from_client_address, 
-    message
+    receiver_client_address, 
+    sender_client_address, 
+    message,
+    timeout=10
 ):
-    url = "http://" + to_client_address + "/new-message/"
+    url = "http://" + receiver_client_address + "/new-message/"
     data = {
         'message': message, 
-        'from_client_address': from_client_address
+        'sender_client_address': sender_client_address
     }
-    return send_request_to_chat_server(url, data=data, timeout=10)
+    return send_request_to_chat_server(url, data=data, timeout=timeout)
 
 
 def send_reply_to_client_address(
-    to_client_address, 
-    from_client_address, 
+    receiver_client_address, 
+    sender_client_address, 
     message,
-    reply
+    reply,
+    timeout=10
 ):
-    url = "http://" + from_client_address + "/reply-message/"
+    url = "http://" + sender_client_address + "/reply-message/"
     data = {
         'message': message, 
         'reply': reply,
-        'from_client_address': to_client_address
+        'sender_client_address': receiver_client_address
     }
-    return send_request_to_chat_server(url, data=data, timeout=10)
+    return send_request_to_chat_server(url, data=data, timeout=timeout)
 
 
-def get_to_client_address_by_round_robin(from_client_address):
-    to_client_address = None
-    client_list = RedisClient().get_client_list()
-    if client_list and len(client_list) > 1:
-        if client_list[0] == from_client_address:
-            to_client_address = client_list[1]
+def get_receiver_client_address(client_list, sender_client_address):
+    receiver_client_address = None
+    if len(client_list) > 1:
+        if client_list[0] == sender_client_address:
+            receiver_client_address = client_list[1]
         else:
-            to_client_address = client_list[0]
-        RedisClient().remove_client(to_client_address)
-        RedisClient().append_client(to_client_address)
-    return to_client_address
+            receiver_client_address = client_list[0]
+        RedisClient().pop_client(receiver_client_address)
+        RedisClient().append_client(receiver_client_address)
+    return receiver_client_address
 
 
 def visitor_ip_address(request):
@@ -78,3 +79,11 @@ def get_client_ip_address(request):
     if client_port:
         client_address = client_address + ':' + str(client_port)
     return client_address
+
+
+def ping(client):
+    url = "http://" + client + "/ping/"
+    status_code, _ = send_request_to_chat_server(url)
+    if status_code == 200:
+        return True
+    return False
